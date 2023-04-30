@@ -1,31 +1,20 @@
 use clap::{Parser};
 use quinn::{Endpoint, ServerConfig};
+
 use std::error::Error;
 use std::{
     net::SocketAddr,
-    path::{PathBuf},
     sync::Arc,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
+use log::{debug, error, info};
 
 #[derive(Parser, Debug)]
 #[clap(name = "server")]
 pub struct Opt {
-    /// file to log TLS keys to for debugging
-    #[clap(long = "keylog")]
-    keylog: bool,
-    /// TLS private key in PEM format
-    #[clap(value_parser, short = 'k', long = "key", requires = "cert")]
-    key: Option<PathBuf>,
-    /// TLS certificate in PEM format
-    #[clap(value_parser, short = 'c', long = "cert", requires = "key")]
-    cert: Option<PathBuf>,
-    /// Enable stateless retries
-    #[clap(long = "stateless-retry")]
-    stateless_retry: bool,
     /// Address to listen on
-    #[clap(long = "listen", default_value = "0.0.0.0:4433")]
+    #[clap(long = "listen", short = 'l', default_value = "0.0.0.0:4433")]
     listen: SocketAddr,
 }
 
@@ -55,48 +44,12 @@ pub fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>)
 
 #[tokio::main]
 pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
-    // let (certs, key) = if let (Some(key_path), Some(cert_path)) = (&options.key, &options.cert) {
-    //     let key = fs::read(key_path).map_err(|err| format!("failed to read private key {}", err)).unwrap();
-    //     let key = if key_path.extension().map_or(false, |x| x == "der") {
-    //         rustls::PrivateKey(key)
-    //     } else {
-    //         let pkcs8: Vec<Vec<u8>> = rustls_pemfile::pkcs8_private_keys(&mut &*key)
-    //             .map_err(|err| format!("malformed PKCS #8 private key {}", err).to_string()).unwrap();
-    //         match pkcs8.into_iter().next() {
-    //             Some(x) => rustls::PrivateKey(x),
-    //             None => {
-    //                 let rsa = rustls_pemfile::rsa_private_keys(&mut &*key)
-    //                     .map_err(|err| format!("malformed PKCS #1 private key {}", err)).unwrap();
-    //                 match rsa.into_iter().next() {
-    //                     Some(x) => rustls::PrivateKey(x),
-    //                     None => {
-    //                         panic!("no private keys found")
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     };
-    //     let cert_chain = fs::read(cert_path).map_err(|err| format!("failed to read certificate chain {}", err)).unwrap();
-    //     let cert_chain = if cert_path.extension().map_or(false, |x| x == "der") {
-    //         vec![rustls::Certificate(cert_chain)]
-    //     } else {
-    //         rustls_pemfile::certs(&mut &*cert_chain).unwrap()
-    //             .into_iter()
-    //             .map(rustls::Certificate)
-    //             .collect()
-    //     };
-
-    //     (cert_chain, key)
-    // } else {
-    //     panic!("no private keys found")
-    // };
-
     let (endpoint, _) = make_server_endpoint(options.listen).unwrap();
     // accept a single connection
     loop {
         let incoming_conn = endpoint.accept().await.unwrap();
         let conn = incoming_conn.await.unwrap();
-        println!(
+        info!(
             "[server] connection accepted: addr={}",
             conn.remote_address()
         );
@@ -112,17 +65,17 @@ async fn handle_connection(connection: quinn::Connection) {
     let ssh_conn = match ssh_stream {
         Ok(conn) => conn,
         Err(e) => {
-            println!("Error connecting to ssh server: {}", e);
+            error!("[server] connect to ssh error: {}", e);
             return;
         }
     };
 
-    println!("ssh connection established\n");
+    info!("[server] ssh connection established");
 
     let (mut quinn_send, mut quinn_recv) = match connection.accept_bi().await {
         Ok(stream) => stream,
         Err(e) => {
-            println!("Error opening quinn stream: {}", e);
+            error!("[server] open quic stream error: {}", e);
             return;
         }
     };
@@ -137,17 +90,17 @@ async fn handle_connection(connection: quinn::Connection) {
                     if n == 0 {
                         continue;
                     }
-                    println!("recv data from ssh server {} bytes", n);
+                    debug!("[server] recv data from ssh server {} bytes", n);
                     match quinn_send.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
-                            println!("Error writing to quinn stream: {}", e);
+                            error!("[server] writing to quic stream error: {}", e);
                             return;
                         }
                     }
                 }
                 Err(e) => {
-                    println!("Error reading from ssh server: {}", e);
+                    error!("[server] reading from ssh server error: {}", e);
                     return;
                 }
             }
@@ -159,30 +112,35 @@ async fn handle_connection(connection: quinn::Connection) {
         loop {
             match quinn_recv.read(&mut buf).await {
                 Ok(None) => {
-                    println!("quic connection closed");
                     continue;
                 }
                 Ok(Some(n)) => {
-                    println!("{} bytes read from quic client", n);
+                    debug!("[server] recv data from quic stream {} bytes", n);
                     if n == 0 {
-                        // println!("quic connection closed");
                         continue;
                     }
                     match ssh_write.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
-                            println!("Error writing to ssh server: {}", e);
+                            error!("[server] writing to ssh server error: {}", e);
                             return;
                         }
                     }
                 }
                 Err(e) => {
-                    println!("Error reading from quic client: {}", e);
+                    error!("[server] reading from quic client error: {}", e);
                     return;
                 }
             }
         }
     };
 
-    tokio::join!(recv_thread, write_thread);
+    tokio::select! {
+        _ = recv_thread => (),
+        _ = write_thread => (),
+    }
+
+    info!("[server] exit client");
+
+    // tokio::join!(recv_thread, write_thread);
 }

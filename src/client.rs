@@ -2,10 +2,8 @@
 
 use clap::Parser;
 use quinn::{ClientConfig, Endpoint};
-use std::{error::Error, net::SocketAddr, sync::Arc};
-use std::{net::ToSocketAddrs};
-use tokio::io::{AsyncWriteExt};
-use tokio::io::{AsyncReadExt};
+use std::{error::Error, net::SocketAddr, sync::Arc, net::ToSocketAddrs};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use url::Url;
 
 #[allow(unused_imports)]
@@ -15,12 +13,6 @@ use log::{debug, error, info, trace, warn, Level};
 #[derive(Parser, Debug)]
 #[clap(name = "client")]
 pub struct Opt {
-    /// file to log TLS keys to for debugging
-    #[clap(long = "keylog")]
-    keylog: bool,
-    /// Enable stateless retries
-    #[clap(long = "stateless-retry")]
-    stateless_retry: bool,
     /// Sewrver address
     url: Url,
 }
@@ -96,7 +88,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         .next()
         .ok_or_else(|| "couldn't resolve to an address")?;
 
-    info!("Client Connecting to {:?}", remote);
+    info!("[Client] Connecting to {:?}", remote);
 
     let endpoint = make_client_endpoint("0.0.0.0:0".parse().unwrap())?;
     // connect to server
@@ -121,17 +113,15 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 // Return value of `Ok(0)` signifies that the remote has
                 // closed
                 Ok(None) => {
-                    // println!("error recv data from server");
-                    info!("Client recv data from quic server None");
                     continue;
                 }
                 Ok(Some(n)) => {
-                    info!("Client recv data from quic server {} bytes", n);
+                    debug!("[Client] recv data from quic server {} bytes", n);
                     // Copy the data back to socket
                     match writer.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
-                            info!("Client recv data from quic server, write to stdout: {}", e);
+                            error!("[Client] write to stdout error: {}", e);
                             return;
                         }
                     }
@@ -139,12 +129,12 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 Err(err) => {
                     // Unexpected socket error. There isn't much we can do
                     // here so just stop processing.
-                    info!("Client recv data from quic server error: {}", err);
+                    error!("[Client] recv data from quic server error: {}", err);
                     return;
                 }
             }
             if writer.flush().await.is_err() {
-                info!("Client recv data flush stdout error");
+                error!("[Client] recv data flush stdout error");
             }
         }
     };
@@ -159,22 +149,21 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 // closed
                 Ok(n) => {
                     if n == 0 {
-                        info!("Client recv none data from stdin");
                         continue;
                     }
-                    info!("Client recv data from stdin {} bytes", n);
+                    debug!("[Client] recv data from stdin {} bytes", n);
                     // Copy the data back to socket
                     if send.write_all(&buf[..n]).await.is_err() {
                         // Unexpected socket error. There isn't much we can
                         // do here so just stop processing.
-                        info!("Client recv data from stdin, send data to quic server error");
+                        info!("[Client] send data to quic server error");
                         return;
                     }
                 }
                 Err(err) => {
                     // Unexpected socket error. There isn't much we can do
                     // here so just stop processing.
-                    info!("error recv data from stdin {}", err);
+                    info!("[Client] recv data from stdin error: {}", err);
                     return;
                 }
             }

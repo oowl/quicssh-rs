@@ -15,3 +15,7 @@ url = "2.3.1"
 rustls = { version = "0.20.6", features = ["quic", "dangerous_configuration"] }
 rustls-pemfile = "1.0.2"
 rcgen = "0.10.0"
+slog = "2.7.0"
+log = { version = "0.4", features = ["std", "serde"] }
+colored = "2.0.0"
+log4rs = "1.2.0"

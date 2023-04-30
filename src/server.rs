@@ -1,15 +1,13 @@
+use clap::{Parser};
+use quinn::{Endpoint, ServerConfig};
+use std::error::Error;
 use std::{
-    ascii, fs, io,
     net::SocketAddr,
-    path::{self, Path, PathBuf},
-    str,
+    path::{PathBuf},
     sync::Arc,
 };
-use std::error::Error;
-use clap::{Args, Parser, Subcommand};
-use quinn::{ClientConfig, Endpoint, ServerConfig};
-use tokio::net::TcpStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 #[derive(Parser, Debug)]
 #[clap(name = "server")]
@@ -57,7 +55,6 @@ pub fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>)
 
 #[tokio::main]
 pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
-
     // let (certs, key) = if let (Some(key_path), Some(cert_path)) = (&options.key, &options.cert) {
     //     let key = fs::read(key_path).map_err(|err| format!("failed to read private key {}", err)).unwrap();
     //     let key = if key_path.extension().map_or(false, |x| x == "der") {
@@ -106,7 +103,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         tokio::spawn(async move {
             handle_connection(conn).await;
         });
-        // Dropping all handles associated with a connection implicitly closes it            
+        // Dropping all handles associated with a connection implicitly closes it
     }
 }
 
@@ -132,8 +129,7 @@ async fn handle_connection(connection: quinn::Connection) {
 
     let (mut ssh_recv, mut ssh_write) = tokio::io::split(ssh_conn);
 
-
-    let recv_thread= async move {
+    let recv_thread = async move {
         let mut buf = [0; 2048];
         loop {
             match ssh_recv.read(&mut buf).await {
@@ -141,7 +137,7 @@ async fn handle_connection(connection: quinn::Connection) {
                     if n == 0 {
                         continue;
                     }
-                    println!("recv data from ssh {} bytes", n);
+                    println!("recv data from ssh server {} bytes", n);
                     match quinn_send.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
@@ -151,7 +147,7 @@ async fn handle_connection(connection: quinn::Connection) {
                     }
                 }
                 Err(e) => {
-                    println!("Error reading from ssh stream: {}", e);
+                    println!("Error reading from ssh server: {}", e);
                     return;
                 }
             }
@@ -167,7 +163,7 @@ async fn handle_connection(connection: quinn::Connection) {
                     continue;
                 }
                 Ok(Some(n)) => {
-                    println!("{} bytes read from quic stream", n);
+                    println!("{} bytes read from quic client", n);
                     if n == 0 {
                         // println!("quic connection closed");
                         continue;
@@ -175,13 +171,13 @@ async fn handle_connection(connection: quinn::Connection) {
                     match ssh_write.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
-                            println!("Error writing to ssh stream: {}", e);
+                            println!("Error writing to ssh server: {}", e);
                             return;
                         }
                     }
                 }
                 Err(e) => {
-                    println!("Error reading from quic stream: {}", e);
+                    println!("Error reading from quic client: {}", e);
                     return;
                 }
             }
@@ -189,5 +185,4 @@ async fn handle_connection(connection: quinn::Connection) {
     };
 
     tokio::join!(recv_thread, write_thread);
-
 }

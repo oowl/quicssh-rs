@@ -1,15 +1,16 @@
 // #![cfg(feature = "rustls")]
 
-use quinn::{ClientConfig, Endpoint, ServerConfig};
-use std::{error::Error, net::SocketAddr, sync::Arc};
-use std::{
-    path::PathBuf,
-    net::ToSocketAddrs,
-};
 use clap::Parser;
+use quinn::{ClientConfig, Endpoint};
+use std::{error::Error, net::SocketAddr, sync::Arc};
+use std::{net::ToSocketAddrs};
+use tokio::io::{AsyncWriteExt};
+use tokio::io::{AsyncReadExt};
 use url::Url;
-use tokio::io::{BufReader, AsyncReadExt};
-use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt};
+
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn, Level};
+
 
 #[derive(Parser, Debug)]
 #[clap(name = "client")]
@@ -64,8 +65,8 @@ fn configure_client() -> Result<ClientConfig, Box<dyn Error>> {
         .with_custom_certificate_verifier(SkipServerVerification::new())
         .with_no_client_auth();
 
-        let mut client_config = ClientConfig::new(Arc::new(crypto));
-        enable_mtud_if_supported(&mut client_config);
+    let mut client_config = ClientConfig::new(Arc::new(crypto));
+    enable_mtud_if_supported(&mut client_config);
 
     Ok(client_config)
 }
@@ -76,15 +77,12 @@ fn configure_client() -> Result<ClientConfig, Box<dyn Error>> {
 ///
 /// - server_certs: list of trusted certificates.
 #[allow(unused)]
-pub fn make_client_endpoint(
-    bind_addr: SocketAddr,
-) -> Result<Endpoint, Box<dyn Error>> {
+pub fn make_client_endpoint(bind_addr: SocketAddr) -> Result<Endpoint, Box<dyn Error>> {
     let client_cfg = configure_client()?;
     let mut endpoint = Endpoint::client(bind_addr)?;
     endpoint.set_default_client_config(client_cfg);
     Ok(endpoint)
 }
-
 
 #[tokio::main]
 pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
@@ -98,17 +96,16 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         .next()
         .ok_or_else(|| "couldn't resolve to an address")?;
 
-    println!("Connecting to {:?}", remote);
+    info!("Client Connecting to {:?}", remote);
 
-    let endpoint =  make_client_endpoint("0.0.0.0:0".parse().unwrap())?;
+    let endpoint = make_client_endpoint("0.0.0.0:0".parse().unwrap())?;
     // connect to server
     let connection = endpoint
         .connect(remote, url.host_str().unwrap_or("localhost"))
         .unwrap()
         .await
         .unwrap();
-    println!("[client] connected: addr={}", connection.remote_address());
-
+    info!("[client] connected: addr={}", connection.remote_address());
 
     let (mut send, mut recv) = connection
         .open_bi()
@@ -117,7 +114,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
 
     let recv_thread = async move {
         let mut buf = vec![0; 2048];
-        let mut stdout = tokio::io::stdout();
+        let mut writer = tokio::io::BufWriter::with_capacity(1, tokio::io::stdout());
 
         loop {
             match recv.read(&mut buf).await {
@@ -125,15 +122,16 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 // closed
                 Ok(None) => {
                     // println!("error recv data from server");
+                    info!("Client recv data from quic server None");
                     continue;
-                },
-                Ok(Some( n)) => {
-                    // println!("recv data from server {} bytes", n);
+                }
+                Ok(Some(n)) => {
+                    info!("Client recv data from quic server {} bytes", n);
                     // Copy the data back to socket
-                    match stdout.write_all(&buf[..n]).await {
+                    match writer.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
-                            println!("Error writing to stdout stream: {}", e);
+                            info!("Client recv data from quic server, write to stdout: {}", e);
                             return;
                         }
                     }
@@ -141,39 +139,42 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 Err(err) => {
                     // Unexpected socket error. There isn't much we can do
                     // here so just stop processing.
-                    println!("error recv data from quic {}", err);
+                    info!("Client recv data from quic server error: {}", err);
                     return;
                 }
+            }
+            if writer.flush().await.is_err() {
+                info!("Client recv data flush stdout error");
             }
         }
     };
 
     let write_thread = async move {
-        let mut buf =  [0; 2048];
-        let mut stdin = tokio::io::stdin();
+        let mut buf = [0; 2048];
+        let mut reader = tokio::io::BufReader::with_capacity(1, tokio::io::stdin());
 
         loop {
-            match stdin.read(&mut buf).await {
+            match reader.read(&mut buf).await {
                 // Return value of `Ok(0)` signifies that the remote has
                 // closed
                 Ok(n) => {
                     if n == 0 {
-                        // println!("error recv data from stdin");
+                        info!("Client recv none data from stdin");
                         continue;
                     }
-                    // println!("send data to server {} bytes", n);
+                    info!("Client recv data from stdin {} bytes", n);
                     // Copy the data back to socket
                     if send.write_all(&buf[..n]).await.is_err() {
                         // Unexpected socket error. There isn't much we can
                         // do here so just stop processing.
-                        // println!("error send data to server");
+                        info!("Client recv data from stdin, send data to quic server error");
                         return;
                     }
                 }
                 Err(err) => {
                     // Unexpected socket error. There isn't much we can do
                     // here so just stop processing.
-                    // println!("error recv data from ssh {}", err);
+                    info!("error recv data from stdin {}", err);
                     return;
                 }
             }

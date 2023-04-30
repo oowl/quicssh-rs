@@ -77,7 +77,7 @@ Options:
 ### Server
 
 ```console
-$ quicssh server-rs -h
+$ quicssh-rs server -h
 Server
 
 Usage: quicssh-rs server [OPTIONS]

@@ -2,6 +2,7 @@ mod client;
 mod server;
 
 use log4rs::append::file::FileAppender;
+use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
@@ -34,18 +35,30 @@ enum Commands {
 
 fn main() {
     let args = Cli::parse();
-    let mut config = Config::builder().build(Root::builder().build(LevelFilter::Info)).unwrap();
+    let config ;
 
-    if args.log_file.is_some() {
-        let logfile = FileAppender::builder()
-            .encoder(Box::new(PatternEncoder::default()))
-            .build(args.log_file.unwrap())
-            .unwrap();
+    match args.log_file {
+        Some(log_file) => {
+            let logfile = FileAppender::builder()
+                .encoder(Box::new(PatternEncoder::default()))
+                .build(log_file)
+                .unwrap();
 
-        config = Config::builder()
-            .appender(Appender::builder().build("logfile", Box::new(logfile)))
-            .build(Root::builder().appender("logfile").build(LevelFilter::Info))
-            .unwrap();
+            config = Config::builder()
+                .appender(Appender::builder().build("logfile", Box::new(logfile)))
+                .build(Root::builder().appender("logfile").build(LevelFilter::Info))
+                .unwrap();
+            
+        }
+        None => {
+            let stdout = ConsoleAppender::builder()
+                .encoder(Box::new(PatternEncoder::default()))
+                .build();
+            config = Config::builder()
+                .appender(Appender::builder().build("stdout", Box::new(stdout)))
+                .build(Root::builder().appender("stdout").build(LevelFilter::Info))
+                .unwrap();
+        }
     }
 
     log4rs::init_config(config).unwrap();

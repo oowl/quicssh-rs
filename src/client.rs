@@ -88,7 +88,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         .next()
         .ok_or_else(|| "couldn't resolve to an address")?;
 
-    info!("[Client] Connecting to {:?}", remote);
+    info!("[client] Connecting to {:?}", remote);
 
     let endpoint = make_client_endpoint("0.0.0.0:0".parse().unwrap())?;
     // connect to server
@@ -116,12 +116,12 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                     continue;
                 }
                 Ok(Some(n)) => {
-                    debug!("[Client] recv data from quic server {} bytes", n);
+                    debug!("[client] recv data from quic server {} bytes", n);
                     // Copy the data back to socket
                     match writer.write_all(&buf[..n]).await {
                         Ok(_) => (),
                         Err(e) => {
-                            error!("[Client] write to stdout error: {}", e);
+                            error!("[client] write to stdout error: {}", e);
                             return;
                         }
                     }
@@ -129,12 +129,12 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 Err(err) => {
                     // Unexpected socket error. There isn't much we can do
                     // here so just stop processing.
-                    error!("[Client] recv data from quic server error: {}", err);
+                    error!("[client] recv data from quic server error: {}", err);
                     return;
                 }
             }
             if writer.flush().await.is_err() {
-                error!("[Client] recv data flush stdout error");
+                error!("[client] recv data flush stdout error");
             }
         }
     };
@@ -151,25 +151,31 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                     if n == 0 {
                         continue;
                     }
-                    debug!("[Client] recv data from stdin {} bytes", n);
+                    debug!("[client] recv data from stdin {} bytes", n);
                     // Copy the data back to socket
                     if send.write_all(&buf[..n]).await.is_err() {
                         // Unexpected socket error. There isn't much we can
                         // do here so just stop processing.
-                        info!("[Client] send data to quic server error");
+                        info!("[client] send data to quic server error");
                         return;
                     }
                 }
                 Err(err) => {
                     // Unexpected socket error. There isn't much we can do
                     // here so just stop processing.
-                    info!("[Client] recv data from stdin error: {}", err);
+                    info!("[client] recv data from stdin error: {}", err);
                     return;
                 }
             }
         }
     };
 
-    tokio::join!(recv_thread, write_thread);
+    tokio::select! {
+        _ = recv_thread => (),
+        _ = write_thread => (),
+    }
+
+    info!("[client] exit client");
+
     Ok(())
 }

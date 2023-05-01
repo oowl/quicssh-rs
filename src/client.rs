@@ -106,7 +106,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
 
     let recv_thread = async move {
         let mut buf = vec![0; 2048];
-        let mut writer = tokio::io::BufWriter::with_capacity(1, tokio::io::stdout());
+        let mut writer = tokio::io::BufWriter::new(tokio::io::stdout());
 
         loop {
             match recv.read(&mut buf).await {
@@ -141,7 +141,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
 
     let write_thread = async move {
         let mut buf = [0; 2048];
-        let mut reader = tokio::io::BufReader::with_capacity(1, tokio::io::stdin());
+        let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
 
         loop {
             match reader.read(&mut buf).await {

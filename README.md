@@ -84,6 +84,19 @@ Options:
   -V, --version  Print version
 ```
 
+#### Client SSH Config
+```
+╰─$ cat ~/.ssh/config
+Host test
+    HostName test.test
+    User root
+    Port 22333
+    ProxyCommand /Users/ouyangjun/code/quicssh-rs/target/release/quicssh-rs client quic://%h:%p
+
+╰─$ ssh test                                                                                                                                                                  
+Last login: Mon May  1 13:32:15 2023 from 127.0.0.1
+```
+
 ### Server
 
 ```console

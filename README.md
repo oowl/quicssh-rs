@@ -9,6 +9,9 @@ Why use QUIC? Because SSH is vulnerable in TCP connection environments, and most
 ## Demo
 https://user-images.githubusercontent.com/39181969/235409750-234de94a-1189-4288-93c2-45f62a9dfc48.mp4
 
+## Why not mosh?
+Because the architecture of mosh requires the opening of many ports to support control and data connections, which is not very user-friendly in many environments. In addition, vscode remote development does not support mosh.
+
 ## Architecture
 
 Standard SSH connection

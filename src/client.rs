@@ -1,7 +1,7 @@
 // #![cfg(feature = "rustls")]
 
 use clap::Parser;
-use quinn::{ClientConfig, Endpoint};
+use quinn::{ClientConfig, Endpoint, VarInt};
 use std::{error::Error, net::SocketAddr, sync::Arc, net::ToSocketAddrs};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use url::Url;
@@ -19,14 +19,17 @@ pub struct Opt {
 
 /// Enables MTUD if supported by the operating system
 #[cfg(not(any(windows, os = "linux")))]
-pub fn enable_mtud_if_supported(_client_config: &mut ClientConfig) {}
+pub fn enable_mtud_if_supported() -> quinn::TransportConfig {
+    let transport_config = quinn::TransportConfig::default();
+    transport_config
+}
 
 /// Enables MTUD if supported by the operating system
 #[cfg(any(windows, os = "linux"))]
-pub fn enable_mtud_if_supported(client_config: &mut ClientConfig) {
+pub fn enable_mtud_if_supported() -> quinn::TransportConfig {
     let mut transport_config = quinn::TransportConfig::default();
     transport_config.mtu_discovery_config(Some(quinn::MtuDiscoveryConfig::default()));
-    client_config.transport_config(Arc::new(transport_config));
+    transport_config
 }
 
 struct SkipServerVerification;
@@ -58,7 +61,10 @@ fn configure_client() -> Result<ClientConfig, Box<dyn Error>> {
         .with_no_client_auth();
 
     let mut client_config = ClientConfig::new(Arc::new(crypto));
-    enable_mtud_if_supported(&mut client_config);
+    let mut transport_config = enable_mtud_if_supported();
+    transport_config.max_idle_timeout(Some(VarInt::from_u32(60_000).into()));
+    transport_config.keep_alive_interval(Some(std::time::Duration::from_secs(1)));
+    client_config.transport_config(Arc::new(transport_config));
 
     Ok(client_config)
 }

@@ -4,6 +4,7 @@ use clap::Parser;
 use quinn::{ClientConfig, Endpoint, VarInt};
 use std::{error::Error, net::SocketAddr, sync::Arc, net::ToSocketAddrs};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::signal::unix::{signal, SignalKind};
 use url::Url;
 
 #[allow(unused_imports)]
@@ -176,9 +177,23 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         }
     };
 
+    let signal_thread = async move {
+        let mut stream = match signal(SignalKind::hangup()) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("[client] create signal stream error: {}", e);
+                return;
+            }
+        };
+
+        stream.recv().await;
+        info!("[client] got signal HUP");
+    };
+
     tokio::select! {
         _ = recv_thread => (),
         _ = write_thread => (),
+        _ = signal_thread => connection.close(0u32.into(), b"signal HUP"),
     }
 
     info!("[client] exit client");

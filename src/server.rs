@@ -49,8 +49,20 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
     let (endpoint, _) = make_server_endpoint(options.listen).unwrap();
     // accept a single connection
     loop {
-        let incoming_conn = endpoint.accept().await.unwrap();
-        let conn = incoming_conn.await.unwrap();
+        let incoming_conn = match endpoint.accept().await {
+            Some(conn) => conn,
+            None => {
+                continue;
+            }
+        };
+        let conn = match incoming_conn.await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("[server] accept connection error: {}", e);
+                continue;
+            }
+        };
+
         info!(
             "[server] connection accepted: addr={}",
             conn.remote_address()

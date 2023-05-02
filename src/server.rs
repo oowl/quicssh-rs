@@ -1,5 +1,5 @@
 use clap::{Parser};
-use quinn::{Endpoint, ServerConfig};
+use quinn::{Endpoint, ServerConfig, VarInt};
 
 use std::error::Error;
 use std::{
@@ -29,6 +29,7 @@ fn configure_server() -> Result<(ServerConfig, Vec<u8>), Box<dyn Error>> {
     let mut server_config = ServerConfig::with_single_cert(cert_chain, priv_key)?;
     let transport_config = Arc::get_mut(&mut server_config.transport).unwrap();
     transport_config.max_concurrent_uni_streams(0_u8.into());
+    transport_config.max_idle_timeout(Some(VarInt::from_u32(60_000).into()));
     #[cfg(any(windows, os = "linux"))]
     transport_config.mtu_discovery_config(Some(quinn::MtuDiscoveryConfig::default()));
 

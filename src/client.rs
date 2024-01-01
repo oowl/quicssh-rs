@@ -97,7 +97,13 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
 
     info!("[client] Connecting to {:?}", remote);
 
-    let endpoint = make_client_endpoint("0.0.0.0:0".parse().unwrap())?;
+    let endpoint = make_client_endpoint(
+        if remote.is_ipv6() {
+            "[::]:0"
+        }else{
+            "0.0.0.0:0"
+        }.parse().unwrap()
+    )?;
     // connect to server
     let connection = endpoint
         .connect(remote, url.host_str().unwrap_or("localhost"))

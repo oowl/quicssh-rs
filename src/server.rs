@@ -1,14 +1,11 @@
-use clap::{Parser};
+use clap::Parser;
 use quinn::{Endpoint, ServerConfig, VarInt};
 
+use log::{debug, error, info};
 use std::error::Error;
-use std::{
-    net::SocketAddr,
-    sync::Arc,
-};
+use std::{net::SocketAddr, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use log::{debug, error, info};
 
 #[derive(Parser, Debug)]
 #[clap(name = "server")]

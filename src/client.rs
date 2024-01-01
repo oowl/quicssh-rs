@@ -2,14 +2,13 @@
 
 use clap::Parser;
 use quinn::{ClientConfig, Endpoint, VarInt};
-use std::{error::Error, net::SocketAddr, sync::Arc, net::ToSocketAddrs};
+use std::{error::Error, net::SocketAddr, net::ToSocketAddrs, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::signal::unix::{signal, SignalKind};
 use url::Url;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn, Level};
-
 
 #[derive(Parser, Debug)]
 #[clap(name = "client")]
@@ -24,8 +23,7 @@ pub struct Opt {
 /// Enables MTUD if supported by the operating system
 #[cfg(not(any(windows, os = "linux")))]
 pub fn enable_mtud_if_supported() -> quinn::TransportConfig {
-    let transport_config = quinn::TransportConfig::default();
-    transport_config
+    quinn::TransportConfig::default()
 }
 
 /// Enables MTUD if supported by the operating system
@@ -96,24 +94,20 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
     let remote = (url.host_str().unwrap(), url.port().unwrap_or(4433))
         .to_socket_addrs()?
         .next()
-        .ok_or_else(|| "couldn't resolve to an address")?;
+        .ok_or("couldn't resolve to an address")?;
 
     info!("[client] Connecting to {:?}", remote);
 
-    let endpoint = make_client_endpoint(
-        match options.bind_addr{
-            None =>{
-                if remote.is_ipv6() {
-                    "[::]:0"
-                }else{
-                    "0.0.0.0:0"
-                }.parse().unwrap()
-            }
-            Some(local)=>{
-                local
-            }
+    let endpoint = make_client_endpoint(match options.bind_addr {
+        None => if remote.is_ipv6() {
+            "[::]:0"
+        } else {
+            "0.0.0.0:0"
         }
-    )?;
+        .parse()
+        .unwrap(),
+        Some(local) => local,
+    })?;
     // connect to server
     let connection = endpoint
         .connect(remote, url.host_str().unwrap_or("localhost"))

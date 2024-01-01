@@ -1,18 +1,14 @@
 mod client;
 mod server;
 
-use log4rs::append::file::FileAppender;
 use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
 use clap::{Parser, Subcommand};
-use std::{
-    str,
-    path::{PathBuf},
-};
 use log::{error, LevelFilter};
-
+use std::{path::PathBuf, str};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -35,33 +31,31 @@ enum Commands {
 
 fn main() {
     let args = Cli::parse();
-    let config ;
 
-    match args.log_file {
+    let config = match args.log_file {
         Some(log_file) => {
             let logfile = FileAppender::builder()
-                .encoder(Box::new(PatternEncoder::default()))
+                .encoder(Box::<PatternEncoder>::default())
                 .build(log_file)
                 .unwrap();
 
-            config = Config::builder()
+            Config::builder()
                 .appender(Appender::builder().build("logfile", Box::new(logfile)))
                 .build(Root::builder().appender("logfile").build(LevelFilter::Info))
-                .unwrap();
+                .unwrap()
         }
         None => {
             let stdout = ConsoleAppender::builder()
-                .encoder(Box::new(PatternEncoder::default()))
+                .encoder(Box::<PatternEncoder>::default())
                 .build();
-            config = Config::builder()
+            Config::builder()
                 .appender(Appender::builder().build("stdout", Box::new(stdout)))
                 .build(Root::builder().appender("stdout").build(LevelFilter::Info))
-                .unwrap();
+                .unwrap()
         }
-    }
+    };
 
     log4rs::init_config(config).unwrap();
-
 
     match args.command {
         Commands::Server(server) => {
@@ -70,7 +64,6 @@ fn main() {
                 Ok(_) => {}
                 Err(e) => {
                     error!("Error: {:#?}", e);
-                    return;
                 }
             }
         }
@@ -80,9 +73,8 @@ fn main() {
                 Ok(_) => {}
                 Err(e) => {
                     error!("Error: {:#?}", e);
-                    return;
                 }
             }
         }
-    };
+    }
 }

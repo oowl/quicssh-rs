@@ -14,8 +14,11 @@ use log::{debug, error, info, trace, warn, Level};
 #[derive(Parser, Debug)]
 #[clap(name = "client")]
 pub struct Opt {
-    /// Sewrver address
+    /// Server address
     url: Url,
+    /// Client address
+    #[clap(long = "bind", short = 'b')]
+    bind_addr: Option<SocketAddr>,
 }
 
 /// Enables MTUD if supported by the operating system
@@ -97,7 +100,20 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
 
     info!("[client] Connecting to {:?}", remote);
 
-    let endpoint = make_client_endpoint("0.0.0.0:0".parse().unwrap())?;
+    let endpoint = make_client_endpoint(
+        match options.bind_addr{
+            None =>{
+                if remote.is_ipv6() {
+                    "[::]:0"
+                }else{
+                    "0.0.0.0:0"
+                }.parse().unwrap()
+            }
+            Some(local)=>{
+                local
+            }
+        }
+    )?;
     // connect to server
     let connection = endpoint
         .connect(remote, url.host_str().unwrap_or("localhost"))

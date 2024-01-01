@@ -20,7 +20,7 @@ use log::{error, LevelFilter};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-    /// Location of log, Defalt if 
+    /// Location of log, Default if
     #[clap(value_parser, long = "log")]
     log_file: Option<PathBuf>,
 }
@@ -48,7 +48,6 @@ fn main() {
                 .appender(Appender::builder().build("logfile", Box::new(logfile)))
                 .build(Root::builder().appender("logfile").build(LevelFilter::Info))
                 .unwrap();
-            
         }
         None => {
             let stdout = ConsoleAppender::builder()

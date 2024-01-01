@@ -14,7 +14,7 @@ use log::{debug, error, info, trace, warn, Level};
 #[derive(Parser, Debug)]
 #[clap(name = "client")]
 pub struct Opt {
-    /// Sewrver address
+    /// Server address
     url: Url,
 }
 

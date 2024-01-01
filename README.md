@@ -1,15 +1,17 @@
 # quicssh-rs
 
-> :smile: **quicssh-rs** is a QUIC proxy that allows to use QUIC to connect to an SSH server without needing to patch the client or the server. 
+> :smile: **quicssh-rs** is a QUIC proxy that allows to use QUIC to connect to an SSH server without needing to patch the client or the server.
 
 `quicssh-rs` is [quicssh](https://github.com/moul/quicssh) rust implementation. It is based on [quinn](https://github.com/quinn-rs/quinn) and [tokio](https://github.com/tokio-rs/tokio)
 
 Why use QUIC? Because SSH is vulnerable in TCP connection environments, and most SSH packets are actually small, so it is only necessary to maintain the SSH connection to use it in any network environment. QUIC is a good choice because it has good weak network optimization and an important feature called connection migration. This means that I can switch Wi-Fi networks freely when remote, ensuring a stable SSH connection.
 
 ## Demo
+
 https://user-images.githubusercontent.com/39181969/235409750-234de94a-1189-4288-93c2-45f62a9dfc48.mp4
 
 ## Why not mosh?
+
 Because the architecture of mosh requires the opening of many ports to support control and data connections, which is not very user-friendly in many environments. In addition, vscode remote development does not support mosh.
 
 ## Architecture
@@ -74,18 +76,20 @@ Options:
 $ quicssh-rs client -h
 Client
 
-Usage: quicssh-rs client <URL>
+Usage: quicssh-rs client [OPTIONS] <URL>
 
 Arguments:
-  <URL>  Sewrver address
+  <URL>  Server address
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+  -b, --bind <BIND_ADDR>  Client address
+  -h, --help              Print help
+  -V, --version           Print version
 ```
 
 #### Client SSH Config
-```
+
+```console
 ╰─$ cat ~/.ssh/config
 Host test
     HostName test.test
@@ -93,7 +97,7 @@ Host test
     Port 22333
     ProxyCommand /Users/ouyangjun/code/quicssh-rs/target/release/quicssh-rs client quic://%h:%p
 
-╰─$ ssh test                                                                                                                                                                  
+╰─$ ssh test
 Last login: Mon May  1 13:32:15 2023 from 127.0.0.1
 ```
 

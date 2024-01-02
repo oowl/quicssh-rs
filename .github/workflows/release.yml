@@ -15,6 +15,7 @@ env:
 
 jobs:
   test:
+    permissions: write-all
     name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
     strategy:

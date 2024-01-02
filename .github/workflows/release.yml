@@ -9,7 +9,7 @@ on:
   pull_request:
 
 env:
-  CRATE_NAME: quicssh
+  CRATE_NAME: quicssh-rs
   GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
 
@@ -29,37 +29,37 @@ jobs:
           - os_name: FreeBSD-x86_64
             os: ubuntu-20.04
             target: x86_64-unknown-freebsd
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-FreeBSD-x86_64.tar.gz
           - os_name: Linux-x86_64
             os: ubuntu-20.04
             target: x86_64-unknown-linux-musl
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-Linux-x86_64-musl.tar.gz
           - os_name: Linux-aarch64
             os: ubuntu-20.04
             target: aarch64-unknown-linux-musl
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-Linux-aarch64-musl.tar.gz
           - os_name: Linux-arm
             os: ubuntu-20.04
             target: arm-unknown-linux-musleabi
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-Linux-arm-musl.tar.gz
           - os_name: Linux-i686
             os: ubuntu-20.04
             target: i686-unknown-linux-musl
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-Linux-i686-musl.tar.gz
           - os_name: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-Darwin-x86_64.tar.gz
           - os_name: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
-            bin: quicssh
+            bin: quicssh-rs
             name: quicssh-Darwin-aarch64.tar.gz
         toolchain:
           - stable

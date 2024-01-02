@@ -124,10 +124,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
-      - name: Configure Git
-        run: |
-          git config --global user.email "jdoe@example.com"
-          git config --global user.name "J. Doe"
       - name: Install musl-tools on Linux
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
         if: contains(matrix.platform.name, 'musl')

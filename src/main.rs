@@ -17,13 +17,13 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
     /// Location of log, Default if
-    #[clap(value_parser, long = "log",group="log")]
+    #[clap(value_parser, long = "log", group = "log")]
     log_file: Option<PathBuf>,
     /// Verbose log
-    #[clap(long,short,group="log")]
+    #[clap(long, short, group = "log")]
     verbose: bool,
-    /// Output no log
-    #[clap(long,short,conflicts_with="log")]
+    /// No log
+    #[clap(long, short, conflicts_with = "log")]
     silent: bool,
 }
 
@@ -38,16 +38,15 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
 
-    let level=
-        if args.silent{
-            LevelFilter::Off
-        }else{
-            if args.verbose {
-                LevelFilter::Debug
-            }else{
-                LevelFilter::Info
-            }
-        };
+    let level = if args.silent {
+        LevelFilter::Off
+    } else {
+        if args.verbose {
+            LevelFilter::Debug
+        } else {
+            LevelFilter::Info
+        }
+    };
     let config = match args.log_file {
         Some(log_file) => {
             let logfile = FileAppender::builder()

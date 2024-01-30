@@ -17,8 +17,14 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
     /// Location of log, Default if
-    #[clap(value_parser, long = "log")]
+    #[clap(value_parser, long = "log",group="log")]
     log_file: Option<PathBuf>,
+    /// Verbose log
+    #[clap(long,short,group="log")]
+    verbose: bool,
+    /// Output no log
+    #[clap(long,short,conflicts_with="log")]
+    silent: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -32,6 +38,16 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
 
+    let level=
+        if args.silent{
+            LevelFilter::Off
+        }else{
+            if args.verbose {
+                LevelFilter::Debug
+            }else{
+                LevelFilter::Info
+            }
+        };
     let config = match args.log_file {
         Some(log_file) => {
             let logfile = FileAppender::builder()
@@ -41,7 +57,7 @@ fn main() {
 
             Config::builder()
                 .appender(Appender::builder().build("logfile", Box::new(logfile)))
-                .build(Root::builder().appender("logfile").build(LevelFilter::Info))
+                .build(Root::builder().appender("logfile").build(level))
                 .unwrap()
         }
         None => {
@@ -50,7 +66,7 @@ fn main() {
                 .build();
             Config::builder()
                 .appender(Appender::builder().build("stdout", Box::new(stdout)))
-                .build(Root::builder().appender("stdout").build(LevelFilter::Info))
+                .build(Root::builder().appender("stdout").build(level))
                 .unwrap()
         }
     };

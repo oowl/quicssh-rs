@@ -57,7 +57,7 @@ SSH Connection proxified with QUIC
 $ quicssh-rs -h
 A simple ssh server based on quic protocol
 
-Usage: quicssh-rs [OPTIONS] <COMMAND>
+Usage: quicssh-rs <COMMAND>
 
 Commands:
   server  Server
@@ -65,10 +65,9 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-      --log <LOG_FILE>  Location of log, Defalt if
-  -h, --help            Print help
-  -V, --version         Print version
-   ```
+  -h, --help     Print help
+  -V, --version  Print version
+```
 
 ### Client
 

@@ -1,14 +1,10 @@
 mod client;
 mod server;
 
-use log4rs::append::console::ConsoleAppender;
-use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Config, Root};
-use log4rs::encode::pattern::PatternEncoder;
+use env_logger::{Builder, Env};
 
 use clap::{Parser, Subcommand};
-use log::{error, LevelFilter};
-use std::{path::PathBuf, str};
+use log::error;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -16,9 +12,7 @@ use std::{path::PathBuf, str};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-    /// Location of log, Default if
-    #[clap(value_parser, long = "log")]
-    log_file: Option<PathBuf>,
+    // we should still hold this struct for future extension
 }
 
 #[derive(Subcommand, Debug)]
@@ -32,30 +26,7 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
 
-    let config = match args.log_file {
-        Some(log_file) => {
-            let logfile = FileAppender::builder()
-                .encoder(Box::<PatternEncoder>::default())
-                .build(log_file)
-                .unwrap();
-
-            Config::builder()
-                .appender(Appender::builder().build("logfile", Box::new(logfile)))
-                .build(Root::builder().appender("logfile").build(LevelFilter::Info))
-                .unwrap()
-        }
-        None => {
-            let stdout = ConsoleAppender::builder()
-                .encoder(Box::<PatternEncoder>::default())
-                .build();
-            Config::builder()
-                .appender(Appender::builder().build("stdout", Box::new(stdout)))
-                .build(Root::builder().appender("stdout").build(LevelFilter::Info))
-                .unwrap()
-        }
-    };
-
-    log4rs::init_config(config).unwrap();
+    Builder::from_env(Env::default().default_filter_or("info")).init();
 
     match args.command {
         Commands::Server(server) => {

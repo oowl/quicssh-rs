@@ -17,14 +17,11 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
     /// Location of log, Default if
-    #[clap(value_parser, long = "log", group = "log")]
+    #[clap(value_parser, long = "log")]
     log_file: Option<PathBuf>,
-    /// Verbose log
-    #[clap(long, short, group = "log")]
-    verbose: bool,
-    /// Output no log
-    #[clap(long, short, conflicts_with = "log")]
-    silent: bool,
+    /// Log level, Default Error
+    #[clap(long)]
+    log_level: Option<LevelFilter>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -38,14 +35,9 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
 
-    let level = if args.silent {
-        LevelFilter::Off
-    } else {
-        if args.verbose {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Info
-        }
+    let level = match args.log_level {
+        Some(log_level) => log_level,
+        None => LevelFilter::Error,
     };
     let config = match args.log_file {
         Some(log_file) => {

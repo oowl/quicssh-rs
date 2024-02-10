@@ -27,8 +27,6 @@ Standard SSH connection
 └───────────────────────────────────────┘             └───────────────────────┘
 ```
 
-
-
 ---
 
 SSH Connection proxified with QUIC
@@ -65,8 +63,10 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+      --log <LOG_FILE>         Location of log, Default if
+      --log-level <LOG_LEVEL>  Log level, Default Error
+  -h, --help                   Print help
+  -V, --version                Print version
 ```
 
 ### Client

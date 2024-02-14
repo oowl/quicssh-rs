@@ -110,7 +110,7 @@ Usage: quicssh-rs server [OPTIONS]
 
 Options:
   -l, --listen <LISTEN>        Address to listen on [default: 0.0.0.0:4433]
-  -p, --proxy-for <PROXY_FOR>  Address of the ssh server [default: 127.0.0.1:22]
+  -p, --proxy-to <PROXY_TO>  Address of the ssh server [default: 127.0.0.1:22]
   -h, --help                   Print help
   -V, --version                Print version
 ```

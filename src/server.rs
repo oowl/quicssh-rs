@@ -13,6 +13,9 @@ pub struct Opt {
     /// Address to listen on
     #[clap(long = "listen", short = 'l', default_value = "0.0.0.0:4433")]
     listen: SocketAddr,
+    /// Address of the ssh server
+    #[clap(long = "proxy-to", short = 'p', default_value = "127.0.0.1:22")]
+    proxy_to: SocketAddr,
 }
 
 /// Returns default server configuration along with its certificate.
@@ -65,14 +68,14 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
             conn.remote_address()
         );
         tokio::spawn(async move {
-            handle_connection(conn).await;
+            handle_connection(options.proxy_to, conn).await;
         });
         // Dropping all handles associated with a connection implicitly closes it
     }
 }
 
-async fn handle_connection(connection: quinn::Connection) {
-    let ssh_stream = TcpStream::connect("127.0.0.1:22").await;
+async fn handle_connection(proxy_for: SocketAddr, connection: quinn::Connection) {
+    let ssh_stream = TcpStream::connect(proxy_for).await;
     let ssh_conn = match ssh_stream {
         Ok(conn) => conn,
         Err(e) => {

@@ -4,7 +4,11 @@ use clap::Parser;
 use quinn::{ClientConfig, Endpoint, VarInt};
 use std::{error::Error, net::SocketAddr, net::ToSocketAddrs, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+#[cfg(not(windows))]
 use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)]
+use tokio::signal::windows::ctrl_c;
 use url::Url;
 
 #[allow(unused_imports)]
@@ -187,18 +191,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let signal_thread = async move {
-        let mut stream = match signal(SignalKind::hangup()) {
-            Ok(s) => s,
-            Err(e) => {
-                error!("[client] create signal stream error: {}", e);
-                return;
-            }
-        };
-
-        stream.recv().await;
-        info!("[client] got signal HUP");
-    };
+    let signal_thread = create_signal_thread();
 
     tokio::select! {
         _ = recv_thread => (),
@@ -209,4 +202,35 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
     info!("[client] exit client");
 
     Ok(())
+}
+
+#[cfg(windows)]
+fn create_signal_thread() -> impl core::future::Future<Output = ()> {
+    async move {
+        let mut stream = match ctrl_c() {
+            Ok(s) => s,
+            Err(e) => {
+                error!("[client] create signal stream error: {}", e);
+                return;
+            }
+        };
+
+        stream.recv().await;
+        info!("[client] got signal Ctrl-C");
+    }
+}
+#[cfg(not(windows))]
+fn create_signal_thread() -> impl core::future::Future<Output = ()> {
+    async move {
+        let mut stream = match signal(SignalKind::hangup()) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("[client] create signal stream error: {}", e);
+                return;
+            }
+        };
+
+        stream.recv().await;
+        info!("[client] got signal HUP");
+    }
 }

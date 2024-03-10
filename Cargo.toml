@@ -9,12 +9,12 @@ description = "A simple ssh server based on quic protocol"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.2.5", features = ["derive"] }
-quinn = "0.9.3"
-tokio = { version = "1.28.0", features = ["full"] }
-url = "2.3.1"
-rustls = { version = "0.20.6", features = ["quic", "dangerous_configuration"] }
-rustls-pemfile = "1.0.2"
-rcgen = "0.10.0"
-log = { version = "0.4", features = ["std", "serde"] }
+clap = { version = "4.5.2", features = ["derive"] }
+quinn = "0.10.2"
+tokio = { version = "1.36.0", features = ["full"] }
+url = "2.5.0"
+rustls = { version = "0.21.10", features = ["quic","dangerous_configuration"] }
+rustls-pemfile = "2.1.1"
+rcgen = "0.12.1"
+log = { version = "0.4.21", features = ["std", "serde"] }
 log4rs = "1.2.0"

@@ -89,7 +89,7 @@ jobs:
         run: |
           cd target/${{ matrix.platform.target }}/release
           if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
-            7z a ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
+            7z a ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}.exe
           else
             tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           fi

@@ -1,6 +1,6 @@
 [package]
 name = "quicssh-rs"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "MIT"
 authors = ["oowl <ouyangjun1999@gmail.com>"]

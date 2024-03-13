@@ -14,12 +14,13 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  test:
+  compile:
     permissions: write-all
-    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    name: compile ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
-      fail-fast: false
+      # assert perfect success
+      fail-fast: true
       matrix:
         platform:
           # Platforms that don't work:
@@ -85,6 +86,7 @@ jobs:
           args: "--locked --release"
           strip: true
       - name: Package as archive
+        # in future we would need bundle etc files
         shell: bash
         run: |
           cd target/${{ matrix.platform.target }}/release
@@ -94,37 +96,31 @@ jobs:
             tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           fi
           cd -
-        if: |
-          matrix.toolchain == 'stable' &&
-          ( startsWith( github.ref, 'refs/tags/v' ) ||
-            github.ref == 'refs/tags/test-release' )
+        if: (github.ref == 'refs/tags/test-release' || startsWith( github.ref, 'refs/tags/v' ))
       - name: Generate SHA-256
         run: shasum -a 256 ${{ matrix.platform.name }}
-        if: |
-          matrix.toolchain == 'stable' &&
-          matrix.platform.os == 'macOS-latest' &&
-          ( startsWith( github.ref, 'refs/tags/v' ) ||
-            github.ref == 'refs/tags/test-release' )
+        if: matrix.platform.os == 'macOS-latest' && (github.ref == 'refs/tags/test-release' || startsWith( github.ref, 'refs/tags/v' ))
       - name: Publish release artifacts
         uses: actions/upload-artifact@v3
         with:
           name: quicssh-${{ matrix.platform.os_name }}
           path: "quicssh-*"
-        if: matrix.toolchain == 'stable' && github.ref == 'refs/tags/test-release'
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          files: "quicssh-*"
-        if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )
+        if: (github.ref == 'refs/tags/test-release' || startsWith( github.ref, 'refs/tags/v' ))
   crate:
     permissions: write-all
     name: publish crate.io release
     runs-on: ubuntu-latest
-    needs: test
+    needs: compile
     steps:
       - uses: actions/checkout@v3
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
       - name: publish crate.io release (dummy)
-        run: cargo tree
+        run: cargo publish -n
+
+      # - name: Publish GitHub release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     draft: true
+      #     files: "quicssh-*"
+      #   if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )

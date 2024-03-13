@@ -98,12 +98,6 @@ jobs:
           matrix.toolchain == 'stable' &&
           ( startsWith( github.ref, 'refs/tags/v' ) ||
             github.ref == 'refs/tags/test-release' )
-      - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: quicssh-${{ matrix.platform.os_name }}
-          path: "quicssh-*"
-        if: matrix.toolchain == 'stable' && github.ref == 'refs/tags/test-release'
       - name: Generate SHA-256
         run: shasum -a 256 ${{ matrix.platform.name }}
         if: |
@@ -111,6 +105,12 @@ jobs:
           matrix.platform.os == 'macOS-latest' &&
           ( startsWith( github.ref, 'refs/tags/v' ) ||
             github.ref == 'refs/tags/test-release' )
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: quicssh-${{ matrix.platform.os_name }}
+          path: "quicssh-*"
+        if: matrix.toolchain == 'stable' && github.ref == 'refs/tags/test-release'
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
         with:

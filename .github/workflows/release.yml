@@ -83,7 +83,7 @@ jobs:
           command: "build"
           target: ${{ matrix.platform.target }}
           toolchain: ${{ matrix.toolchain }}
-          args: "--locked --release"
+          args: ${{ (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v')) && '--locked' || '--locked --release' }} # short evaluation emulates ternary conditional operator
           strip: true
       - name: Package as archive
         # in future we would need bundle etc files

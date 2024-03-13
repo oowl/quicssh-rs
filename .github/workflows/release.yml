@@ -101,7 +101,7 @@ jobs:
         run: shasum -a 256 ${{ matrix.platform.name }}
         if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))&&matrix.platform.os == 'macOS-latest'
       - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quicssh-${{ matrix.platform.os_name }}
           path: "quicssh-*"

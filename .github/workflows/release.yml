@@ -1,4 +1,4 @@
-name: Tests and release
+name: Test & Release
 
 on:
   push:
@@ -16,7 +16,7 @@ env:
 jobs:
   compile:
     permissions: write-all
-    name: compile ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    name: Compile ${{ matrix.platform.os_name }} with Rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       # assert perfect success

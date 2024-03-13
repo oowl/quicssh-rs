@@ -1,22 +1,19 @@
+name: Code Lint
 on: [push]
-
-name: build
 
 jobs:
   check:
     name: Rust project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
         with:
             toolchain: stable
             override: true
             components: rustfmt, clippy
-
       - name: Cargo format
         run: cargo fmt --all -- --check
-
       - name: Cargo clippy
         run: cargo clippy --all-targets

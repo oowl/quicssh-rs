@@ -96,16 +96,22 @@ jobs:
             tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           fi
           cd -
-        if: (github.ref == 'refs/tags/test-release' || startsWith( github.ref, 'refs/tags/v' ))
+        if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
       - name: Generate SHA-256
         run: shasum -a 256 ${{ matrix.platform.name }}
-        if: matrix.platform.os == 'macOS-latest' && (github.ref == 'refs/tags/test-release' || startsWith( github.ref, 'refs/tags/v' ))
+        if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))&&matrix.platform.os == 'macOS-latest'
       - name: Publish release artifacts
         uses: actions/upload-artifact@v3
         with:
           name: quicssh-${{ matrix.platform.os_name }}
           path: "quicssh-*"
-        if: (github.ref == 'refs/tags/test-release' || startsWith( github.ref, 'refs/tags/v' ))
+        if: startsWith(github.ref, 'refs/tags/test-release')
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: "quicssh-*"
+        if: matrix.toolchain == 'stable' && startsWith(github.ref,'refs/tags/v')
   crate:
     permissions: write-all
     name: publish crate.io release

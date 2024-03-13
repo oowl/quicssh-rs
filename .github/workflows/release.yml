@@ -14,7 +14,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  compile:
+  build:
     permissions: write-all
     name: Compile ${{ matrix.platform.os_name }} with Rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
@@ -116,17 +116,19 @@ jobs:
     permissions: write-all
     name: publish crate.io release
     runs-on: ubuntu-latest
-    needs: compile
+    needs: build
+    if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
     steps:
       - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            override: true
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
       - name: publish crate.io release (dummy)
-        run: cargo publish -n
+        uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          dry-run: true
 
-      # - name: Publish GitHub release
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     draft: true
-      #     files: "quicssh-*"
-      #   if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )

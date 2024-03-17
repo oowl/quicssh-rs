@@ -134,7 +134,7 @@ jobs:
           version: 0.1.4
           # version: ${{ github.ref }} # refs/tags/v*.*.*
           arch: ${{ matrix.platform.arch }}
-          depends: 'libc6 (>= 2.2.1)'
+          # depends: 'libc6 (>= 2.2.1)'
           desc: 'quicssh-rs test package.'
         if: contains(matrix.platform.name, 'Linux')
       - name: Publish release artifacts

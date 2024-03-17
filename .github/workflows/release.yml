@@ -112,6 +112,23 @@ jobs:
           draft: true
           files: "quicssh-*"
         if: matrix.toolchain == 'stable' && startsWith(github.ref,'refs/tags/v')
+      - name: create deb packcage dir
+        run: |
+          mkdir -p .debpkg/usr/bin/
+          cp target/${{ matrix.platform.target }}/debug/quicssh-rs .debpkg/usr/bin/
+        if: contains(matrix.platform.name, 'Linux')
+      - name: build deb package
+        uses: jiro4989/build-deb-action@v3
+        with:
+          package: quicssh-rs
+          package_root: .debpkg
+          maintainer: JyJyJcr
+          version: 0.1.4
+          # version: ${{ github.ref }} # refs/tags/v*.*.*
+          # arch: 'a64'
+          depends: 'libc6 (>= 2.2.1)'
+          desc: 'quicssh-rs test package.'
+        if: contains(matrix.platform.name, 'Linux')
   crate:
     permissions: write-all
     name: publish crate.io release

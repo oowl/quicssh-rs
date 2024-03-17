@@ -137,6 +137,12 @@ jobs:
           depends: 'libc6 (>= 2.2.1)'
           desc: 'quicssh-rs test package.'
         if: contains(matrix.platform.name, 'Linux')
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quicssh-${{ matrix.platform.os_name }}
+          path: "quicssh-*.deb"
+        if: contains(matrix.platform.name, 'Linux')
   crate:
     permissions: write-all
     name: publish crate.io release

@@ -99,7 +99,7 @@ jobs:
         if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
       - name: Generate SHA-256
         run: shasum -a 256 ${{ matrix.platform.name }}
-        if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))&&matrix.platform.os == 'macOS-latest'
+        if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
       - name: Publish release artifacts
         uses: actions/upload-artifact@v4
         with:

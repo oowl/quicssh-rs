@@ -5,6 +5,7 @@ use log::{debug, error, info};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::error::Error;
+use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::fs::read_to_string;
@@ -18,8 +19,8 @@ pub struct Opt {
     #[clap(long = "listen", short = 'l', default_value = "0.0.0.0:4433")]
     listen: SocketAddr,
     /// Address of the ssh server
-    #[clap(long = "proxy-to", short = 'p', default_value = "127.0.0.1:22")]
-    proxy_to: SocketAddr,
+    #[clap(long = "proxy-to", short = 'p')]
+    proxy_to: Option<SocketAddr>,
     #[clap(long = "conf", short = 'F')]
     conf_path: Option<PathBuf>,
 }
@@ -69,6 +70,16 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         None => ServerConf::new(),
     };
 
+    let default_proxy = match conf.proxy.get("default") {
+        Some(sock) => sock.clone(),
+        None => {
+            use std::net::IpAddr::V4;
+            options
+                .proxy_to
+                .unwrap_or(SocketAddr::new(V4(Ipv4Addr::LOCALHOST), 22))
+        }
+    };
+
     let (endpoint, _) = make_server_endpoint(options.listen).unwrap();
     // accept a single connection
     loop {
@@ -93,7 +104,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
             .unwrap()
             .server_name
             .unwrap_or(conn.remote_address().ip().to_string());
-        let proxy_to: SocketAddr = conf.proxy.get(&sni).unwrap_or(&options.proxy_to).clone();
+        let proxy_to = conf.proxy.get(&sni).unwrap_or(&default_proxy).clone();
         info!(
             "[server] connection accepted: addr={} sni={} -> {}",
             conn.remote_address(),

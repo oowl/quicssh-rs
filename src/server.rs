@@ -2,8 +2,12 @@ use clap::Parser;
 use quinn::{crypto, Endpoint, ServerConfig, VarInt};
 
 use log::{debug, error, info};
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::error::Error;
+use std::path::PathBuf;
 use std::{net::SocketAddr, sync::Arc};
+use tokio::fs::read_to_string;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -16,6 +20,8 @@ pub struct Opt {
     /// Address of the ssh server
     #[clap(long = "proxy-to", short = 'p', default_value = "127.0.0.1:22")]
     proxy_to: SocketAddr,
+    #[clap(long = "conf", short = 'F')]
+    conf_path: Option<PathBuf>,
 }
 
 /// Returns default server configuration along with its certificate.
@@ -44,8 +50,25 @@ pub fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>)
     Ok((endpoint, server_cert))
 }
 
+#[derive(Deserialize, Debug)]
+struct ServerConf {
+    proxy: HashMap<String, SocketAddr>,
+}
+impl ServerConf {
+    fn new() -> Self {
+        ServerConf {
+            proxy: HashMap::<String, SocketAddr>::new(),
+        }
+    }
+}
+
 #[tokio::main]
 pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
+    let conf: ServerConf = match options.conf_path {
+        Some(path) => toml::from_str(&(read_to_string(path).await?))?,
+        None => ServerConf::new(),
+    };
+
     let (endpoint, _) = make_server_endpoint(options.listen).unwrap();
     // accept a single connection
     loop {
@@ -70,13 +93,15 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
             .unwrap()
             .server_name
             .unwrap_or(conn.remote_address().ip().to_string());
+        let proxy_to: SocketAddr = conf.proxy.get(&sni).unwrap_or(&options.proxy_to).clone();
         info!(
-            "[server] connection accepted: addr={} sni={}",
+            "[server] connection accepted: addr={} sni={} -> {}",
             conn.remote_address(),
-            sni
+            sni,
+            proxy_to
         );
         tokio::spawn(async move {
-            handle_connection(options.proxy_to, conn).await;
+            handle_connection(proxy_to, conn).await;
         });
         // Dropping all handles associated with a connection implicitly closes it
     }

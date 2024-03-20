@@ -1,5 +1,5 @@
 use clap::Parser;
-use quinn::{Endpoint, ServerConfig, VarInt};
+use quinn::{crypto, Endpoint, ServerConfig, VarInt};
 
 use log::{debug, error, info};
 use std::error::Error;
@@ -63,9 +63,17 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
             }
         };
 
+        let sni = conn
+            .handshake_data()
+            .unwrap()
+            .downcast::<crypto::rustls::HandshakeData>()
+            .unwrap()
+            .server_name
+            .unwrap_or(conn.remote_address().ip().to_string());
         info!(
-            "[server] connection accepted: addr={}",
-            conn.remote_address()
+            "[server] connection accepted: addr={} sni={}",
+            conn.remote_address(),
+            sni
         );
         tokio::spawn(async move {
             handle_connection(options.proxy_to, conn).await;

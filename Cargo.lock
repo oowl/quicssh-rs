@@ -577,7 +577,7 @@ dependencies = [
 
 [[package]]
 name = "quicssh-rs"
-version = "0.1.4+autopublish"
+version = "0.1.5-dev"
 dependencies = [
  "clap",
  "log",

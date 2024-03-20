@@ -121,9 +121,9 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
     info!(
-        "[client] connected: addr={:?} host={:?}",
+        "[client] connected: addr={:?} host={}",
         connection.remote_address(),
-        url.host()
+        url.host_str().unwrap_or("dummy")
     );
 
     let (mut send, mut recv) = connection

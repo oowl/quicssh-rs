@@ -2,11 +2,7 @@
 
 use clap::Parser;
 use quinn::{ClientConfig, Endpoint, VarInt};
-use std::{
-    error::Error,
-    net::{SocketAddr, ToSocketAddrs},
-    sync::Arc,
-};
+use std::{error::Error, net::SocketAddr, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[cfg(not(windows))]

@@ -66,7 +66,10 @@ impl ServerConf {
 #[tokio::main]
 pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
     let conf: ServerConf = match options.conf_path {
-        Some(path) => toml::from_str(&(read_to_string(path).await?))?,
+        Some(path) => {
+            info!("[server] importing conf file: {}", path.display());
+            toml::from_str(&(read_to_string(path).await?))?
+        }
         None => ServerConf::new(),
     };
 
@@ -79,8 +82,10 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
                 .unwrap_or(SocketAddr::new(V4(Ipv4Addr::LOCALHOST), 22))
         }
     };
+    info!("[server] default proxy aim: {}", default_proxy);
 
     let (endpoint, _) = make_server_endpoint(options.listen).unwrap();
+    info!("[server] listening on: {}", options.listen);
     // accept a single connection
     loop {
         let incoming_conn = match endpoint.accept().await {
@@ -106,7 +111,7 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
             .unwrap_or(conn.remote_address().ip().to_string());
         let proxy_to = conf.proxy.get(&sni).unwrap_or(&default_proxy).clone();
         info!(
-            "[server] connection accepted: addr={} sni={} -> {}",
+            "[server] connection accepted: ({}, {}) -> {}",
             conn.remote_address(),
             sni,
             proxy_to

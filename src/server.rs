@@ -75,12 +75,9 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
 
     let default_proxy = match conf.proxy.get("default") {
         Some(sock) => sock.clone(),
-        None => {
-            use std::net::IpAddr::V4;
-            options
-                .proxy_to
-                .unwrap_or(SocketAddr::new(V4(Ipv4Addr::LOCALHOST), 22))
-        }
+        None => options
+            .proxy_to
+            .unwrap_or(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 22)),
     };
     info!("[server] default proxy aim: {}", default_proxy);
 

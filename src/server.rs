@@ -1,9 +1,14 @@
 use clap::Parser;
-use quinn::{Endpoint, ServerConfig, VarInt};
+use quinn::{crypto, Endpoint, ServerConfig, VarInt};
 
 use log::{debug, error, info};
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::error::Error;
+use std::net::Ipv4Addr;
+use std::path::PathBuf;
 use std::{net::SocketAddr, sync::Arc};
+use tokio::fs::read_to_string;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -14,8 +19,10 @@ pub struct Opt {
     #[clap(long = "listen", short = 'l', default_value = "0.0.0.0:4433")]
     listen: SocketAddr,
     /// Address of the ssh server
-    #[clap(long = "proxy-to", short = 'p', default_value = "127.0.0.1:22")]
-    proxy_to: SocketAddr,
+    #[clap(long = "proxy-to", short = 'p')]
+    proxy_to: Option<SocketAddr>,
+    #[clap(long = "conf", short = 'F')]
+    conf_path: Option<PathBuf>,
 }
 
 /// Returns default server configuration along with its certificate.
@@ -44,9 +51,38 @@ pub fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>)
     Ok((endpoint, server_cert))
 }
 
+#[derive(Deserialize, Debug)]
+struct ServerConf {
+    proxy: HashMap<String, SocketAddr>,
+}
+impl ServerConf {
+    fn new() -> Self {
+        ServerConf {
+            proxy: HashMap::<String, SocketAddr>::new(),
+        }
+    }
+}
+
 #[tokio::main]
 pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
+    let conf: ServerConf = match options.conf_path {
+        Some(path) => {
+            info!("[server] importing conf file: {}", path.display());
+            toml::from_str(&(read_to_string(path).await?))?
+        }
+        None => ServerConf::new(),
+    };
+
+    let default_proxy = match conf.proxy.get("default") {
+        Some(sock) => sock.clone(),
+        None => options
+            .proxy_to
+            .unwrap_or(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 22)),
+    };
+    info!("[server] default proxy aim: {}", default_proxy);
+
     let (endpoint, _) = make_server_endpoint(options.listen).unwrap();
+    info!("[server] listening on: {}", options.listen);
     // accept a single connection
     loop {
         let incoming_conn = match endpoint.accept().await {
@@ -63,12 +99,22 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
             }
         };
 
+        let sni = conn
+            .handshake_data()
+            .unwrap()
+            .downcast::<crypto::rustls::HandshakeData>()
+            .unwrap()
+            .server_name
+            .unwrap_or(conn.remote_address().ip().to_string());
+        let proxy_to = conf.proxy.get(&sni).unwrap_or(&default_proxy).clone();
         info!(
-            "[server] connection accepted: addr={}",
-            conn.remote_address()
+            "[server] connection accepted: ({}, {}) -> {}",
+            conn.remote_address(),
+            sni,
+            proxy_to
         );
         tokio::spawn(async move {
-            handle_connection(options.proxy_to, conn).await;
+            handle_connection(proxy_to, conn).await;
         });
         // Dropping all handles associated with a connection implicitly closes it
     }

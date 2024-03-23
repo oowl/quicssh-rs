@@ -2,7 +2,7 @@
 
 use clap::Parser;
 use quinn::{ClientConfig, Endpoint, VarInt};
-use std::{error::Error, net::SocketAddr, net::ToSocketAddrs, sync::Arc};
+use std::{error::Error, net::SocketAddr, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[cfg(not(windows))]
@@ -95,30 +95,35 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
         return Err("URL scheme must be quic".into());
     }
 
-    let remote = (url.host_str().unwrap(), url.port().unwrap_or(4433))
-        .to_socket_addrs()?
-        .next()
-        .ok_or("couldn't resolve to an address")?;
+    // Currently `url` crate doesn't recognize quic as scheme (see socket_addrs()), so we can set default port using argument. In future if quic default port is added (as 80 or 443, likely), we will fail to connect to proper port. Ideally we should define own scheme. (ex. "qsrs://" abbr of quicssh-rs)
+    let sock_list = url
+        .socket_addrs(|| Some(4433))
+        .map_err(|_| "Couldn't resolve to any address")?;
 
-    info!("[client] Connecting to {:?}", remote);
+    // Currently we only use the first addr. The other addrs should be fallbacks of the connection, but not implemented now.
+    let remote = sock_list[0];
+    let sni = url.host_str().unwrap_or("THIS_HOSTNAME_SHOULD_NOT_BE_USED");
+
+    info!("[client] Connecting to: {} <- {}", remote, sni);
 
     let endpoint = make_client_endpoint(match options.bind_addr {
-        None => if remote.is_ipv6() {
-            "[::]:0"
-        } else {
-            "0.0.0.0:0"
-        }
-        .parse()
-        .unwrap(),
         Some(local) => local,
+        None => {
+            use std::net::{IpAddr::*, Ipv4Addr, Ipv6Addr};
+            if remote.is_ipv6() {
+                SocketAddr::new(V6(Ipv6Addr::UNSPECIFIED), 0)
+            } else {
+                SocketAddr::new(V4(Ipv4Addr::UNSPECIFIED), 0)
+            }
+        }
     })?;
     // connect to server
-    let connection = endpoint
-        .connect(remote, url.host_str().unwrap_or("localhost"))
-        .unwrap()
-        .await
-        .unwrap();
-    info!("[client] connected: addr={}", connection.remote_address());
+    let connection = endpoint.connect(remote, sni).unwrap().await.unwrap();
+    info!(
+        "[client] Connected to: {} <- {}",
+        connection.remote_address(),
+        sni
+    );
 
     let (mut send, mut recv) = connection
         .open_bi()

@@ -108,11 +108,12 @@ jobs:
         run: cargo install cargo-deb
         if: contains(matrix.platform.target, 'linux')
       - name: Build deb package
-        uses: ClementTsang/cargo-action@v0.0.3
-        with:
-          command: deb
-          args: --target ${{ matrix.platform.target }}
-          use-cross: true
+        run: ./cross deb --target ${{ matrix.platform.target }} --locked --release
+        # uses: ClementTsang/cargo-action@v0.0.3
+        # with:
+          # command: deb
+          # args: --target ${{ matrix.platform.target }}
+          # use-cross: true
         if: contains(matrix.platform.target, 'linux')
       # upload deb
       - name: Upload deb package

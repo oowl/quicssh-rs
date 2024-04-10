@@ -16,7 +16,7 @@ env:
 jobs:
   build:
     permissions: write-all
-    name: Compile for ${{ matrix.platform.os_name }} with Rust ${{ matrix.const.toolchain }}
+    name: Compile for ${{ matrix.platform.name }} with Rust ${{ matrix.const.toolchain }}
     runs-on: ${{ matrix.platform.host }}
     strategy:
       # assert perfect success
@@ -124,13 +124,12 @@ jobs:
         shell: bash
         run: |
           cd target/${{ matrix.platform.target }}/release
-          echo spect: contains(matrix.platform.target, 'windows') = ${{ contains(matrix.platform.target, 'windows') }}
-          if [[ "${{ contains(matrix.platform.target, 'windows') }}" == "true" ]];then
+          if [[ "${{ contains(matrix.platform.target, 'windows') }}" = "true" ]];then
             binname=${{ matrix.const.binbase }}.exe
           else
             binname=${{ matrix.const.binbase }}
           fi
-          if [[ "${{ matrix.platform.host }}" == "windows-latest" ]]; then
+          if [[ "${{ matrix.platform.host }}" = "windows-latest" ]]; then
             7z a ../../../${{ matrix.platform.tarball }} $binname
           else
             tar czvf ../../../${{ matrix.platform.tarball }} $binname

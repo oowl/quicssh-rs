@@ -108,14 +108,14 @@ jobs:
         run: cargo install cargo-deb
         if: contains(matrix.platform.target, 'linux')
       - name: Build deb package
-        run: cargo deb --target ${{ matrix.platform.target }}
+        run: cargo deb --no-build --target ${{ matrix.platform.target }}
         if: contains(matrix.platform.target, 'linux')
       # upload deb
       - name: Upload deb package
         uses: actions/upload-artifact@v4
         with:
           name: deb+${{ matrix.platform.target }}
-          path: "target/${{matrix.platform.target}}/release/*.deb"
+          path: "target/${{matrix.platform.target}}/debian/*.deb"
         if: contains(matrix.platform.target, 'linux')
 
       # build tar

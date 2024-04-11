@@ -1,0 +1,7 @@
+Origin: https://github.com/oowl/quicssh-rs
+Label: quicssh-rs
+Codename: stable
+Suite: stable
+Architectures: amd64 i386 arm64 armel
+Components: main
+Description: The Debian repository for quicssh-rs

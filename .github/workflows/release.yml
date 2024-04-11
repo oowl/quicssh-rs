@@ -84,9 +84,9 @@ jobs:
       # build raw
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
-      # - name: Install musl-tools (on Linux)
-      #   run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
-      #   if: contains(matrix.platform.target, 'musl')
+      - name: Install musl-tools (on Linux)
+        run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
+        if: contains(matrix.platform.target, 'musl')
       # - name: Install cargo-binstall
       #   uses: cargo-bins/cargo-binstall@v1.6.4
       # - name: BInstall cross

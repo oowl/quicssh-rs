@@ -108,7 +108,7 @@ jobs:
         run: cargo install cargo-deb
         if: contains(matrix.platform.target, 'linux')
       - name: Build deb package
-        run: ./cross deb --target ${{ matrix.platform.target }} --locked --release
+        run: cross deb --target ${{ matrix.platform.target }} --locked --release
         # uses: ClementTsang/cargo-action@v0.0.3
         # with:
           # command: deb

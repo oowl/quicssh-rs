@@ -84,9 +84,15 @@ jobs:
       # build raw
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
-      - name: Install musl-tools (on Linux)
-        run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
-        if: contains(matrix.platform.target, 'musl')
+      # - name: Install musl-tools (on Linux)
+      #   run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
+      #   if: contains(matrix.platform.target, 'musl')
+      # - name: Install cargo-binstall
+      #   uses: cargo-bins/cargo-binstall@v1.6.4
+      # - name: BInstall cross
+      #   run: cargo binstall cross
+      # - name: Build binary
+      #   run: cross build +${{ matrix.const.toolchain }} --target ${{ matrix.platform.target }} --locked --release
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:
@@ -108,7 +114,7 @@ jobs:
         run: cargo install cargo-deb
         if: contains(matrix.platform.target, 'linux')
       - name: Build deb package
-        run: cross deb --target ${{ matrix.platform.target }} --locked --release
+        run: cargo deb --no-build --no-strip --target ${{ matrix.platform.target }} --locked --release
         # uses: ClementTsang/cargo-action@v0.0.3
         # with:
           # command: deb

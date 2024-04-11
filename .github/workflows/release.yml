@@ -2,8 +2,6 @@ name: Test & Release
 
 on:
   push:
-    branches:
-      - "*"
     branches-ignore:
       - 'pre_publish'
       - 'publish'
@@ -190,7 +188,8 @@ jobs:
           pattern: deb+*
           merge-multiple: true
           path: ./
-      - name: Create repository
+      - name: Create repository # here we need to provide gpg public (long) id if want to dpkg-sig
+        # now mine is exposed but no problem about valne...ty
         run: |
           cd publish/deb
           for deb in $(ls ../../ |grep -E '\.deb$');do

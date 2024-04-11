@@ -205,7 +205,7 @@ jobs:
           git add ./publish/deb/
           git commit -m "ci: generate/update debian repository"
       # publish
-      - name: push
+      - name: Force push
         run: git push -f
   crate:
     name: Publish crate.io release

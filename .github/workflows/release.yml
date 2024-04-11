@@ -3,7 +3,10 @@ name: Test & Release
 on:
   push:
     branches:
-      - "**"
+      - "*"
+    branches-ignore:
+      - 'pre_publish'
+      - 'publish'
     tags-ignore:
       - "quicssh-*"
   pull_request:
@@ -15,9 +18,9 @@ env:
 
 jobs:
   build:
-    permissions: write-all
     name: Compile for ${{ matrix.platform.name }} with Rust ${{ matrix.const.toolchain }}
     runs-on: ${{ matrix.platform.host }}
+    permissions: write-all
     strategy:
       # assert perfect success
       fail-fast: true
@@ -84,15 +87,9 @@ jobs:
       # build raw
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
-      - name: Install musl-tools (on Linux)
+      - name: Install musl-tools # This is needed only for Linux x86_64, since compiles for other arch runs on docker
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
         if: contains(matrix.platform.target, 'musl')
-      # - name: Install cargo-binstall
-      #   uses: cargo-bins/cargo-binstall@v1.6.4
-      # - name: BInstall cross
-      #   run: cargo binstall cross
-      # - name: Build binary
-      #   run: cross build +${{ matrix.const.toolchain }} --target ${{ matrix.platform.target }} --locked --release
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:
@@ -115,11 +112,6 @@ jobs:
         if: contains(matrix.platform.target, 'linux')
       - name: Build deb package
         run: cargo deb --no-build --no-strip --target ${{ matrix.platform.target }}
-        # uses: ClementTsang/cargo-action@v0.0.3
-        # with:
-          # command: deb
-          # args: --target ${{ matrix.platform.target }}
-          # use-cross: true
         if: contains(matrix.platform.target, 'linux')
       # upload deb
       - name: Upload deb package
@@ -165,9 +157,56 @@ jobs:
           draft: true
           files: "quicssh-*"
         if: matrix.const.is_r && matrix.const.toolchain == 'stable'
-  crate:
+  repository:
+    name: Publish git repository release
     permissions: write-all
+    runs-on: ubuntu-latest
+    needs: build
+    if: (startsWith(github.ref,'refs/tags/v')||startsWith(github.ref, 'refs/tags/test-release'))
+    steps:
+      # checkout
+      - name: Checkout to pre_publish
+        uses: actions/checkout@v4
+        with:
+          ref: pre_publish
+          fetch-depth: 0
+      # move
+      - name: Set gitconfig to bot
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - name: Move(reset) pre_publish to pushed commit
+        run: git reset --hard ${{github.ref_name}}
+      # build deb repo
+      - name: Install reprepro and dpkg-sig
+        run: sudo apt-get -y install reprepro dpkg-sig
+      # - name: Import gpg
+      #   uses: crazy-max/ghaction-import-gpg@v6
+      #   with:
+      #     gpg_private_key: ${{ secrets.DEB_GPG_SECRET_KEY }}
+      - name: Download deb package
+        uses: actions/download-artifact@v4
+        with:
+          pattern: deb+*
+          merge-multiple: true
+          path: ./
+      - name: Create repository
+        run: |
+          cd publish/deb
+          for deb in $(ls ../../ |grep -E '\.deb$');do
+            # dpkg-sig -k 3C288CF6F3917DC32ED8605655C5F6BAACEEA951 --sign builder "../../$deb"
+            reprepro includedeb stable "../../$deb"
+          done
+          reprepro export
+          rm -rf db
+          cd -
+          git add ./publish/deb/
+          git commit -m "ci: generate/update debian repository"
+      - name: push
+        run: git push
+  crate:
     name: Publish crate.io release
+    permissions: write-all
     runs-on: ubuntu-latest
     needs: build
     if: (startsWith(github.ref,'refs/tags/v')||startsWith(github.ref, 'refs/tags/test-release'))

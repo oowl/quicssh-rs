@@ -114,7 +114,7 @@ jobs:
         run: cargo install cargo-deb
         if: contains(matrix.platform.target, 'linux')
       - name: Build deb package
-        run: cargo deb --no-build --no-strip --target ${{ matrix.platform.target }} --locked --release
+        run: cargo deb --no-build --no-strip --target ${{ matrix.platform.target }}
         # uses: ClementTsang/cargo-action@v0.0.3
         # with:
           # command: deb

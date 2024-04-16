@@ -20,3 +20,10 @@ log = { version = "0.4.21", features = ["std", "serde"] }
 log4rs = "1.2.0"
 serde = "1.0.197"
 toml = "0.8.12"
+
+[package.metadata.deb]
+extended-description = """\
+:) quicssh-rs is a QUIC proxy that allows to use QUIC to connect to an SSH server without needing to patch the client or the server."""
+section = "net"
+priority = "optional"
+suggests = "openssh-server"

@@ -2,8 +2,9 @@ name: Test & Release
 
 on:
   push:
-    branches:
-      - "**"
+    branches-ignore:
+      - 'pre_publish'
+      - 'publish'
     tags-ignore:
       - "quicssh-*"
   pull_request:
@@ -15,109 +16,207 @@ env:
 
 jobs:
   build:
+    name: Compile for ${{ matrix.platform.name }} with Rust ${{ matrix.const.toolchain }}
+    runs-on: ${{ matrix.platform.host }}
     permissions: write-all
-    name: Compile ${{ matrix.platform.os_name }} with Rust ${{ matrix.toolchain }}
-    runs-on: ${{ matrix.platform.os }}
     strategy:
       # assert perfect success
       fail-fast: true
       matrix:
+        const:
+          # contain constant information to use them as action style variables
+          # binbase: base file name (means the name without ext)
+          # as_r: true/false whether to act as release (but not release)
+          # is_r: true/false whether is release
+          # is_r: true/false whether is test
+          - binbase: quicssh-rs
+            toolchain: stable
+            as_r: ${{ startsWith(github.ref,'refs/tags/v') || startsWith(github.ref, 'refs/tags/test-release') }}
+            is_r: ${{ startsWith(github.ref,'refs/tags/v') }}
+            is_t: ${{ startsWith(github.ref, 'refs/tags/test-release') }}
         platform:
+          # contain target platform information
+          # name: the conventional name of the platform
+          # host: runner
+          # target: rust target triple
+          # tarball: .tar.gz file name
+
           # Platforms that don't work:
           #
           # - sparc64-unknown-linux-gnu - cannot compile openssl-sys
           # - x86_64-unknown-illumos - weird error compiling openssl - "bin/sh: 1: granlib: not found"
 
-          - os_name: Windows-x86_64
-            os: windows-latest
+          - name: Windows-x86_64
+            host: windows-latest
             target: x86_64-pc-windows-msvc
-            bin: quicssh-rs
-            name: quicssh-Windows-x86_64.tar.gz
-          - os_name: FreeBSD-x86_64
-            os: ubuntu-20.04
+            tarball: quicssh-Windows-x86_64.tar.gz
+          - name: FreeBSD-x86_64
+            host: ubuntu-20.04
             target: x86_64-unknown-freebsd
-            bin: quicssh-rs
-            name: quicssh-FreeBSD-x86_64.tar.gz
-          - os_name: Linux-x86_64
-            os: ubuntu-20.04
-            target: x86_64-unknown-linux-musl
-            bin: quicssh-rs
-            name: quicssh-Linux-x86_64-musl.tar.gz
-          - os_name: Linux-aarch64
-            os: ubuntu-20.04
-            target: aarch64-unknown-linux-musl
-            bin: quicssh-rs
-            name: quicssh-Linux-aarch64-musl.tar.gz
-          - os_name: Linux-arm
-            os: ubuntu-20.04
-            target: arm-unknown-linux-musleabi
-            bin: quicssh-rs
-            name: quicssh-Linux-arm-musl.tar.gz
-          - os_name: Linux-i686
-            os: ubuntu-20.04
+            tarball: quicssh-FreeBSD-x86_64.tar.gz
+          - name: Linux-i686
+            host: ubuntu-20.04
             target: i686-unknown-linux-musl
-            bin: quicssh-rs
-            name: quicssh-Linux-i686-musl.tar.gz
-          - os_name: macOS-x86_64
-            os: macOS-latest
+            tarball: quicssh-Linux-i686-musl.tar.gz
+          - name: Linux-x86_64
+            host: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+            tarball: quicssh-Linux-x86_64-musl.tar.gz
+          - name: Linux-arm
+            host: ubuntu-20.04
+            target: arm-unknown-linux-musleabi
+            tarball: quicssh-Linux-arm-musl.tar.gz
+          - name: Linux-armhf
+            host: ubuntu-20.04
+            target: armv7-unknown-linux-musleabihf
+            tarball: quicssh-Linux-armhf-musl.tar.gz
+          - name: Linux-aarch64
+            host: ubuntu-20.04
+            target: aarch64-unknown-linux-musl
+            tarball: quicssh-Linux-aarch64-musl.tar.gz
+          - name: macOS-x86_64
+            host: macOS-latest
             target: x86_64-apple-darwin
-            bin: quicssh-rs
-            name: quicssh-Darwin-x86_64.tar.gz
-          - os_name: macOS-aarch64
-            os: macOS-latest
+            tarball: quicssh-Darwin-x86_64.tar.gz
+          - name: macOS-aarch64
+            host: macOS-latest
             target: aarch64-apple-darwin
-            bin: quicssh-rs
-            name: quicssh-Darwin-aarch64.tar.gz
-        toolchain:
-          - stable
+            tarball: quicssh-Darwin-aarch64.tar.gz
     steps:
+      # checkout
       - uses: actions/checkout@v4
+
+      # build raw
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
-      - name: Install musl-tools on Linux
+      - name: Install musl-tools # This is needed only for Linux x86_64, since compiles for other arch runs on docker
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
-        if: contains(matrix.platform.name, 'musl')
+        if: contains(matrix.platform.target, 'musl')
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:
           command: "build"
           target: ${{ matrix.platform.target }}
-          toolchain: ${{ matrix.toolchain }}
-          args: ${{ (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v')) && '--locked --release' || '--locked' }} # short evaluation emulates ternary conditional operator
+          toolchain: ${{ matrix.const.toolchain }}
+          args: --locked --release
           strip: true
-      - name: Package as archive
+      # upload raw
+      - name: Upload raw binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw+${{ matrix.platform.target }}
+          path: "target/${{matrix.platform.target}}/release/quicssh-rs*"
+        #if : matrix.const.as_r
+
+      # build deb
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.6.4
+        if: matrix.const.as_r && contains(matrix.platform.target, 'linux')
+      - name: BInstall cargo-deb
+        run: cargo binstall -y cargo-deb
+        if: matrix.const.as_r && contains(matrix.platform.target, 'linux')
+      - name: Build deb package
+        run: cargo deb --no-build --no-strip --target ${{ matrix.platform.target }}
+        if: matrix.const.as_r && contains(matrix.platform.target, 'linux')
+      # upload deb
+      - name: Upload deb package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb+${{ matrix.platform.target }}
+          path: "target/${{matrix.platform.target}}/debian/*.deb"
+        if: matrix.const.as_r && contains(matrix.platform.target, 'linux')
+
+      # build tar
+      - name: Build GitHub tarball
         # in future we would need bundle etc files
         shell: bash
         run: |
           cd target/${{ matrix.platform.target }}/release
-          if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
-            7z a ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}.exe
+          if [[ "${{ contains(matrix.platform.target, 'windows') }}" = "true" ]];then
+            binname=${{ matrix.const.binbase }}.exe
           else
-            tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
+            binname=${{ matrix.const.binbase }}
+          fi
+          if [[ "${{ matrix.platform.host }}" = "windows-latest" ]]; then
+            7z a ../../../${{ matrix.platform.tarball }} $binname
+          else
+            tar czvf ../../../${{ matrix.platform.tarball }} $binname
           fi
           cd -
-        if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
+        if: matrix.const.as_r
       - name: Generate SHA-256
-        run: shasum -a 256 ${{ matrix.platform.name }}
-        if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
-      - name: Publish release artifacts
+        # This step currently not used, but necessary for brew binary install
+        run: shasum -a 256 ${{ matrix.platform.tarball }}
+        if: matrix.const.as_r
+      # upload tar
+      - name: Upload GitHub tarball
         uses: actions/upload-artifact@v4
         with:
-          name: quicssh-${{ matrix.platform.os_name }}
-          path: "quicssh-*"
-        if: startsWith(github.ref, 'refs/tags/test-release')
-      - name: Publish GitHub release
+          name: tar+${{matrix.platform.target}}
+          path: ${{ matrix.platform.tarball }}
+        if: matrix.const.is_t
+      # publish tar
+      - name: Publish GitHub tarball
         uses: softprops/action-gh-release@v1
         with:
           draft: true
           files: "quicssh-*"
-        if: matrix.toolchain == 'stable' && startsWith(github.ref,'refs/tags/v')
-  crate:
+        if: matrix.const.is_r && matrix.const.toolchain == 'stable'
+  repository:
+    name: Publish repository release
     permissions: write-all
-    name: publish crate.io release
     runs-on: ubuntu-latest
     needs: build
-    if: (startsWith(github.ref, 'refs/tags/test-release') || startsWith(github.ref,'refs/tags/v'))
+    if: startsWith(github.ref,'refs/tags/v')||startsWith(github.ref, 'refs/tags/test-release')
+    steps:
+      # checkout
+      - name: Checkout to pre_publish/publish
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ startsWith(github.ref,'refs/tags/v') && 'publish' || 'pre_publish' }}
+          fetch-depth: 0
+      # move
+      - name: Set gitconfig to bot
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - name: Move(reset) pre_publish to pushed commit
+        run: git reset --hard ${{github.ref_name}}
+      # build deb repo
+      - name: Install reprepro and dpkg-sig
+        run: sudo apt-get -y install reprepro dpkg-sig
+      # - name: Import gpg
+      #   uses: crazy-max/ghaction-import-gpg@v6
+      #   with:
+      #     gpg_private_key: ${{ secrets.DEB_GPG_SECRET_KEY }}
+      - name: Download deb package
+        uses: actions/download-artifact@v4
+        with:
+          pattern: deb+*
+          merge-multiple: true
+          path: ./
+      - name: Build deb repository # here we need to provide gpg public (long) id if want to dpkg-sig
+        # now mine is exposed but no problem about valne...ty
+        run: |
+          cd publish/deb
+          for deb in $(ls ../../ |grep -E '\.deb$');do
+            # dpkg-sig -k 3C288CF6F3917DC32ED8605655C5F6BAACEEA951 --sign builder "../../$deb"
+            reprepro includedeb stable "../../$deb"
+          done
+          reprepro export
+          rm -rf db
+          cd -
+          git add ./publish/deb/
+          git commit -m "ci: generate/update debian repository"
+      # publish
+      - name: Force push
+        run: git push -f
+  crate:
+    name: Publish crate.io release
+    permissions: write-all
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref,'refs/tags/v')||startsWith(github.ref, 'refs/tags/test-release')
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
@@ -126,7 +225,7 @@ jobs:
             override: true
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
-      - name: publish crate.io release (dummy)
+      - name: Publish crate.io release
         uses: katyo/publish-crates@v2
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}

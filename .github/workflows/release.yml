@@ -113,7 +113,7 @@ jobs:
         uses: cargo-bins/cargo-binstall@v1.6.4
         if: matrix.const.as_r && contains(matrix.platform.target, 'linux')
       - name: BInstall cargo-deb
-        run: cargo binstall -y cargo-deb
+        run: cargo binstall --force -y cargo-deb
         if: matrix.const.as_r && contains(matrix.platform.target, 'linux')
       - name: Build deb package
         run: cargo deb --no-build --no-strip --target ${{ matrix.platform.target }}

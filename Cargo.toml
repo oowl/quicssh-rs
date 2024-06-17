@@ -12,7 +12,7 @@ description = "A simple ssh server based on quic protocol"
 clap = { version = "4.5.6", features = ["derive"] }
 quinn = "0.10.2"
 tokio = { version = "1.38.0", features = ["full"] }
-url = "2.5.0"
+url = "2.5.1"
 rustls = { version = "0.21.12", features = ["quic","dangerous_configuration"] }
 rustls-pemfile = "2.1.2"
 rcgen = "0.12.1"

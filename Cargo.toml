@@ -18,7 +18,7 @@ rustls-pemfile = "2.1.2"
 rcgen = "0.12.1"
 log = { version = "0.4.21", features = ["std", "serde"] }
 log4rs = "1.2.0"
-serde = "1.0.203"
+serde = "1.0.204"
 toml = "0.8.14"
 
 [package.metadata.deb]

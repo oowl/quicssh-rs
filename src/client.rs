@@ -104,6 +104,9 @@ pub async fn run(options: Opt) -> Result<(), Box<dyn Error>> {
     let remote = sock_list[0];
     let sni = url.host_str().unwrap_or("THIS_HOSTNAME_SHOULD_NOT_BE_USED");
 
+    // Remove brackets from IPv6 address
+    let sni = sni.trim_start_matches('[').trim_end_matches(']');
+
     info!("[client] Connecting to: {} <- {}", remote, sni);
 
     let endpoint = make_client_endpoint(match options.bind_addr {

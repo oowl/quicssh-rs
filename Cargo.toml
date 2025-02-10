@@ -19,7 +19,7 @@ rcgen = "0.12.1"
 log = { version = "0.4.22", features = ["std", "serde"] }
 log4rs = "1.2.0"
 serde = "1.0.217"
-toml = "0.8.19"
+toml = "0.8.20"
 
 [package.metadata.deb]
 extended-description = """\

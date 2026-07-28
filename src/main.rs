@@ -7,7 +7,7 @@ use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
 use clap::{Parser, Subcommand};
-use log::{error, LevelFilter};
+use log::{LevelFilter, error};
 use std::{path::PathBuf, str};
 
 #[derive(Parser, Debug)]
